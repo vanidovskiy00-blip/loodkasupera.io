@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoodkaSupera</title>
+<style>
+  /* ================= БАЗА И ПЕРЕМЕННЫЕ ================= */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-main: #0f0f0f;
+    --bg-sidebar: #141414;
+    --bg-panel: #1a1a1a;
+    --bg-hover: #222222;
+    --border: #2a2a2a;
+    
+    --text-main: #e0e0e0;
+    --text-dim: #888888;
+    --text-mute: #555555;
+    
+    --accent: #ffffff;
+    --win: #6b9e6b;
+    --lose: #9e6b6b;
+    
+    --transition-smooth: 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    --transition-fast: 0.2s ease;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ================= ЭКРАН АВТОРИЗАЦИИ ================= */
+  #authScreen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity var(--transition-smooth), visibility var(--transition-smooth);
+  }
+
+  #authScreen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .auth-box {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    width: 100%;
+    max-width: 360px;
+    transform: translateY(20px);
+    animation: slideUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes slideUp { to { transform: translateY(0); } }
+
+  .auth-title {
+    text-align: center;
+    color: var(--accent);
+    font-size: 1.2em;
+    font-weight: 500;
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+  }
+
+  .auth-input {
+    width: 100%;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-main);
+    color: var(--accent);
+    font-size: 0.95em;
+    outline: none;
+    transition: border-color var(--transition-fast);
+  }
+  .auth-input:focus { border-color: #444; }
+
+  .btn {
+    padding: 14px 24px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-panel);
+    color: var(--accent);
+    font-size: 0.95em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn:hover:not(:disabled) { background: var(--bg-hover); border-color: #444; }
+  .btn-primary { background: var(--accent); color: var(--bg-main); border-color: var(--accent); font-weight: 600; }
+  .btn-primary:hover:not(:disabled) { background: #cccccc; border-color: #cccccc; }
+  .btn-full { width: 100%; margin-top: 8px; }
+
+  .auth-switch { text-align: center; margin-top: 20px; color: var(--text-dim); font-size: 0.85em; }
+  .auth-switch a { color: var(--text-main); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; transition: color var(--transition-fast); }
+  .auth-switch a:hover { color: var(--accent); }
+
+  .auth-msg { text-align: center; min-height: 1.5em; margin-bottom: 12px; font-size: 0.85em; transition: color var(--transition-fast); }
+  .err { color: var(--lose); }
+  .ok  { color: var(--win); }
+
+  /* ================= САЙДБАР ================= */
+  #casinoScreen { display: flex; width: 100%; height: 100vh; opacity: 0; transition: opacity var(--transition-smooth); }
+  #casinoScreen.visible { opacity: 1; }
+
+  .sidebar {
+    width: 240px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 30px 20px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    font-size: 1.1em;
+    color: var(--accent);
+    margin-bottom: 30px;
+    padding-left: 12px;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-menu { display: flex; flex-direction: column; gap: 4px; }
+
+  .nav-item {
+    padding: 12px 16px;
+    border-radius: 8px;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: all var(--transition-fast);
+    border: 1px solid transparent;
+    text-align: left;
+    background: transparent;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav-item:hover { color: var(--accent); background: var(--bg-hover); }
+  .nav-item.active { color: var(--accent); background: var(--bg-panel); border-color: var(--border); }
+
+  .tag-admin { font-size: 0.65em; padding: 2px 6px; border-radius: 4px; background: #333; color: #aaa; letter-spacing: 1px; }
+
+  /* ================= КОНТЕНТ ================= */
+  .main-content { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+
+  .topbar {
+    height: 70px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 30px;
+    background: var(--bg-main);
+  }
+
+  .user-info { display: flex; align-items: center; gap: 20px; }
+  .balance { color: var(--text-main); font-weight: 500; font-size: 1.1em; }
+  .btn-logout { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: all var(--transition-fast); }
+  .btn-logout:hover { color: var(--accent); border-color: #444; }
+
+  /* ================= ПАНЕЛИ ================= */
+  .panel-container { flex: 1; padding: 40px; overflow-y: auto; position: relative; }
+  .panel-container::-webkit-scrollbar { width: 6px; }
+  .panel-container::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  .panel { display: none; max-width: 850px; margin: 0 auto; opacity: 0; transform: translateY(10px); }
+  .panel.active { display: block; animation: fadeInPanel var(--transition-smooth) forwards; }
+
+  @keyframes fadeInPanel {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ================= ИГРОВЫЕ БЛОКИ ================= */
+  .game-box { background: var(--bg-sidebar); border: 1px solid var(--border); border-radius: 12px; padding: 32px; margin-top: 20px; }
+  .game-title { font-size: 1.1em; color: var(--accent); margin-bottom: 24px; font-weight: 500; letter-spacing: 0.5px; }
+
+  .input-row { display: flex; gap: 12px; margin-bottom: 24px; align-items: center; flex-wrap: wrap; }
+  .input-row label { color: var(--text-dim); font-size: 0.9em; }
+
+  input[type="number"], input[type="text"] {
+    width: 120px; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-main); color: var(--accent); font-size: 0.95em; outline: none;
+    transition: border-color var(--transition-fast);
+  }
+  input:focus { border-color: #555; }
+  .input-full { width: 100% !important; max-width: 300px; }
+
+  .result-msg { font-size: 1em; min-height: 1.5em; color: var(--text-dim); margin-bottom: 16px; }
+  .win { color: var(--win); }
+  .lose { color: var(--lose); }
+
+  /* Слоты */
+  .reels { display: flex; gap: 16px; margin-bottom: 24px; }
+  .reel { width: 100px; height: 120px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 3em; user-select: none; }
+  .reel.spinning { animation: pulse 0.3s infinite alternate; }
+  @keyframes pulse { from { opacity: 0.5; transform: scale(0.98); } to { opacity: 1; transform: scale(1.02); } }
+
+  /* Блэкджек */
+  .cards-area { display: flex; gap: 20px; margin-bottom: 20px; }
+  .hand { display: flex; gap: 10px; min-height: 120px; }
+  .card { width: 80px; height: 110px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; animation: dealCard 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+  @keyframes dealCard { from { opacity: 0; transform: translateY(-30px) scale(0.8); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  /* Кости */
+  .dice-area { display: flex; gap: 16px; margin-bottom: 24px; }
+  .die { width: 80px; height: 80px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 3em; user-select: none; }
+  .die.rolling { animation: shake 0.2s infinite; }
+  @keyframes shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(5deg); } 75% { transform: rotate(-5deg); } 100% { transform: rotate(0deg); } }
+
+  /* Админка */
+  .admin-stats { display: flex; gap: 16px; margin-bottom: 24px; }
+  .stat-box { flex: 1; background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+  .stat-val { font-size: 1.4em; color: var(--accent); font-weight: 600; }
+  .stat-lbl { font-size: 0.75em; color: var(--text-mute); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+  .user-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 40px; }
+  .user-row { display: flex; align-items: center; justify-content: space-between; background: var(--bg-main); border: 1px solid var(--border); padding: 16px; border-radius: 8px; transition: border-color var(--transition-fast); }
+  .user-row:hover { border-color: #333; }
+  .user-row-info { font-size: 0.95em; }
+  .user-row-name { color: var(--accent); font-weight: 500; margin-bottom: 4px; }
+  .user-row-balance { color: var(--text-dim); font-size: 0.85em; }
+  .user-row-actions { display: flex; gap: 8px; }
+  
+  .btn-sm { padding: 8px 14px; font-size: 0.85em; border-radius: 6px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-main); cursor: pointer; transition: all var(--transition-fast); }
+  .btn-sm:hover { background: #333; color: var(--accent); }
+  .btn-sm.add { color: var(--win); }
+  .btn-sm.rem { color: var(--lose); }
+
+  /* Таблицы логов */
+  .logs-section { margin-top: 30px; }
+  .logs-title { font-size: 1.1em; color: var(--accent); margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  .table-wrap { background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .logs-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85em; }
+  .logs-table th { background: var(--bg-panel); color: var(--text-dim); padding: 12px 16px; font-weight: 500; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .logs-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+  .logs-table tr:last-child td { border-bottom: none; }
+  .logs-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .logs-table .col-time { color: var(--text-mute); white-space: nowrap; }
+  .logs-table .col-win { color: var(--win); font-weight: bold; }
+  .logs-table .col-lose { color: var(--lose); font-weight: bold; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 100%; height: auto; position: absolute; z-index: 10; border-right: none; border-bottom: 1px solid var(--border); padding: 15px; }
+    .main-content { padding-top: 70px; }
+    .panel-container { padding: 20px; }
+    #casinoScreen { flex-direction: column; }
+    .nav-menu { flex-direction: row; overflow-x: auto; padding-bottom: 5px; }
+    .nav-item { white-space: nowrap; }
+    .logs-table th, .logs-table td { padding: 8px; font-size: 0.9em; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ЭКРАН АВТОРИЗАЦИИ -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div class="auth-title" id="authTitle">Вход</div>
+    <div class="auth-msg" id="authMsg"></div>
+    <input class="auth-input" id="authLogin" placeholder="Ник" maxlength="20" autocomplete="off">
+    <input class="auth-input" id="authPass" type="password" placeholder="Пароль" maxlength="40">
+    <div id="confirmPassWrap" style="display:none;">
+      <input class="auth-input" id="authPass2" type="password" placeholder="Повтори пароль" maxlength="40">
+    </div>
+    <button class="btn btn-primary btn-full" id="authSubmit">Войти</button>
+    <div class="auth-switch">
+      <span id="switchText">Нет аккаунта?</span>
+      <a id="switchMode">Регистрация</a>
+    </div>
+  </div>
+</div>
+
+<!-- ЭКРАН КАЗИНО -->
+<div id="casinoScreen">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      LoodkaSupera
+      <span class="tag-admin" id="adminBadge" style="display:none;">ADMIN</span>
+    </div>
+    <div class="nav-menu">
+      <button class="nav-item active" data-target="cabinet">Личный кабинет</button>
+      <button class="nav-item" data-target="slots">Слоты</button>
+      <button class="nav-item" data-target="blackjack">Блэк Джек</button>
+      <button class="nav-item" data-target="dice">Кости</button>
+      <button class="nav-item" data-target="transfer">Переводы</button>
+      <button class="nav-item" data-target="admin" id="navAdmin" style="display:none;">Админ Панель</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="user-info">
+        <div class="balance" id="headerBalance">0 ₵</div>
+        <button class="btn-logout" id="logoutBtn">Выйти</button>
+      </div>
+    </div>
+
+    <div class="panel-container">
+
+      <!-- Личный кабинет -->
+      <div class="panel active" id="panel-cabinet">
+        <div class="game-box" style="margin-top: 0;">
+          <div class="game-title">Профиль игрока</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <div style="color: var(--text-dim); font-size: 0.85em; margin-bottom: 5px;">Ваш ник</div>
+              <div style="font-size: 1.2em; color: var(--accent);" id="profileNick">—</div>
+            </div>
+            <div>
+              <div style="color: var(--text-dim); font-size: 0.85em; margin-bottom: 5px;">Дата регистрации</div>
+              <div style="font-size: 1.2em; color: var(--accent);" id="profileDate">—</div>
+            </div>
+            <div>
+              <div style="color: var(--text-dim); font-size: 0.85em; margin-bottom: 5px;">Текущий баланс</div>
+              <div style="font-size: 1.2em; color: var(--win);" id="profileBalance">—</div>
+            </div>
+            <div>
+              <div style="color: var(--text-dim); font-size: 0.85em; margin-bottom: 5px;">Статус аккаунта</div>
+              <div style="font-size: 1.2em; color: var(--accent);" id="profileStatus">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Слоты -->
+      <div class="panel" id="panel-slots">
+        <div class="game-box">
+          <div class="game-title">Слоты</div>
+          <div class="reels">
+            <div class="reel" id="reel0">🍒</div>
+            <div class="reel" id="reel1">🍋</div>
+            <div class="reel" id="reel2">⭐</div>
+          </div>
+          <div class="input-row">
+            <label>Ставка:</label>
+            <input type="number" id="slotsBet" value="50" min="1">
+            <button class="btn btn-primary" id="slotsSpin">Крутить</button>
+          </div>
+          <div class="result-msg" id="slotsResult">Сделай ставку</div>
+        </div>
+      </div>
+
+      <!-- Блэкджек -->
+      <div class="panel" id="panel-blackjack">
+        <div class="game-box">
+          <div class="game-title">Блэк Джек</div>
+          <div style="margin-bottom: 20px;">
+            <div style="color: var(--text-dim); font-size: 0.85em; margin-bottom: 8px;">Дилер:</div>
+            <div class="cards-area" id="dealerCards"></div>
+          </div>
+          <div style="margin-bottom: 20px;">
+            <div style="color: var(--text-dim); font-size: 0.85em; margin-bottom: 8px;">Вы:</div>
+            <div class="cards-area" id="playerCards"></div>
+          </div>
+          <div class="input-row" id="bjControls">
+            <input type="number" id="bjBet" value="100" min="1" style="width: 100px;">
+            <button class="btn btn-primary" id="bjStart">Раздать</button>
+          </div>
+          <div class="input-row" id="bjActions" style="display: none;">
+            <button class="btn btn-primary" id="bjHit">Ещё (Hit)</button>
+            <button class="btn" id="bjStand">Хватит (Stand)</button>
+          </div>
+          <div class="result-msg" id="bjResult"></div>
+        </div>
+      </div>
+
+      <!-- Кости -->
+      <div class="panel" id="panel-dice">
+        <div class="game-box">
+          <div class="game-title">Кости</div>
+          <div class="dice-area">
+            <div class="die" id="die0">⚀</div>
+            <div class="die" id="die1">⚀</div>
+          </div>
+          <div class="input-row">
+            <label>Ставка:</label>
+            <input type="number" id="diceBet" value="50" min="1">
+            <label>От:</label>
+            <input type="number" id="diceFrom" value="7" min="2" max="12" style="width:70px;">
+            <label>До:</label>
+            <input type="number" id="diceTo" value="12" min="2" max="12" style="width:70px;">
+          </div>
+          <div class="input-row">
+            <button class="btn btn-primary" id="diceRoll">Бросить</button>
+          </div>
+          <div class="result-msg" id="diceResult">Выбери диапазон</div>
+        </div>
+      </div>
+
+      <!-- Переводы -->
+      <div class="panel" id="panel-transfer">
+        <div class="game-box" style="margin-top: 0;">
+          <div class="game-title">Переводы</div>
+          <div class="input-row">
+            <label>Кому (ник):</label>
+            <input type="text" id="transferTo" placeholder="Ник получателя" style="width: 150px;">
+          </div>
+          <div class="input-row">
+            <label>Сумма:</label>
+            <input type="number" id="transferAmount" placeholder="0" min="1">
+            <button class="btn btn-primary" id="transferSend">Отправить</button>
+          </div>
+          <div class="result-msg" id="transferMsg"></div>
+          
+          <div class="logs-section">
+            <div class="logs-title">Ваши последние переводы</div>
+            <div class="table-wrap">
+              <table class="logs-table" id="myTransferTable">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Направление</th>
+                    <th>Сумма</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Админ Панель -->
+      <div class="panel" id="panel-admin">
+        <div class="game-box" style="margin-top: 0;">
+          <div class="game-title">Управление игроками</div>
+          
+          <div class="admin-stats">
+            <div class="stat-box">
+              <div class="stat-val" id="statTotal">0</div>
+              <div class="stat-lbl">Всего</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="statActive">0</div>
+              <div class="stat-lbl">Активных</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="statFrozen">0</div>
+              <div class="stat-lbl">Заморожено</div>
+            </div>
+          </div>
+
+          <div class="user-list" id="usersList"></div>
+        </div>
+
+        <!-- Логи -->
+        <div class="game-box">
+          <div class="game-title">История всех переводов</div>
+          <div class="table-wrap">
+            <table class="logs-table" id="allTransferTable">
+              <thead>
+                <tr>
+                  <th>Время</th>
+                  <th>Отправитель</th>
+                  <th>Получатель</th>
+                  <th>Сумма</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="game-box">
+          <div class="game-title">История всех игр</div>
+          <div class="table-wrap">
+            <table class="logs-table" id="allGameTable">
+              <thead>
+                <tr>
+                  <th>Время</th>
+                  <th>Игрок</th>
+                  <th>Игра</th>
+                  <th>Ставка</th>
+                  <th>Результат</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= ХРАНИЛИЩЕ ================= */
+const DB_KEY = 'loodka_users_v5';
+const SESSION_KEY = 'loodka_session_v5';
+const LOG_TRANSFERS_KEY = 'loodka_log_transfers_v5';
+const LOG_GAMES_KEY = 'loodka_log_games_v5';
+
+function normLogin(s) { return String(s).trim().toLowerCase(); }
+function loadUsers() { try { return JSON.parse(localStorage.getItem(DB_KEY)) || {}; } catch { return {}; } }
+function saveUsers(users) { localStorage.setItem(DB_KEY, JSON.stringify(users)); }
+
+function findUser(login) {
+  const users = loadUsers();
+  const key = normLogin(login);
+  for (const l of Object.keys(users)) { if (normLogin(l) === key) return users[l]; }
+  return null;
+}
+function nickTaken(login) { return !!findUser(login); }
+
+// Логи
+function loadLogs(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } }
+function saveLog(key, arr) { localStorage.setItem(key, JSON.stringify(arr.slice(0, 500))); } // храним 500 записей
+
+function logTransfer(from, to, amount) {
+  const logs = loadLogs(LOG_TRANSFERS_KEY);
+  logs.unshift({ time: Date.now(), from, to, amount });
+  saveLog(LOG_TRANSFERS_KEY, logs);
+}
+function logGame(login, game, bet, resultText, winAmount) {
+  const logs = loadLogs(LOG_GAMES_KEY);
+  logs.unshift({ time: Date.now(), login, game, bet, resultText, winAmount });
+  saveLog(LOG_GAMES_KEY, logs);
+}
+
+(function ensureAdmin() {
+  const users = loadUsers();
+  if (!findUser('Super6895')) {
+    users['Super6895'] = { login: 'Super6895', pass: '321qwe', balance: 1000, frozen: false, isAdmin: true, created: Date.now() };
+    saveUsers(users);
+  }
+})();
+
+/* ================= СОСТОЯНИЕ ================= */
+let currentUser = null;
+let users = loadUsers();
+const $ = id => document.getElementById(id);
+
+/* ================= АВТОРИЗАЦИЯ ================= */
+let authMode = 'login';
+
+function setAuthMode(mode) {
+  authMode = mode;
+  $('authTitle').textContent = mode === 'login' ? 'Вход' : 'Регистрация';
+  $('authSubmit').textContent = mode === 'login' ? 'Войти' : 'Создать';
+  $('switchText').textContent = mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?';
+  $('switchMode').textContent = mode === 'login' ? 'Регистрация' : 'Вход';
+  $('confirmPassWrap').style.display = mode === 'login' ? 'none' : 'block';
+  $('authMsg').textContent = '';
+}
+
+$('switchMode').addEventListener('click', () => setAuthMode(authMode === 'login' ? 'register' : 'login'));
+
+function authMsg(text, isErr) {
+  const el = $('authMsg');
+  el.textContent = text;
+  el.className = 'auth-msg ' + (isErr ? 'err' : 'ok');
+}
+
+$('authSubmit').addEventListener('click', () => {
+  const loginRaw = $('authLogin').value.trim();
+  const pass = $('authPass').value;
+
+  if (!loginRaw) return authMsg('Введи ник', true);
+  if (!pass) return authMsg('Введи пароль', true);
+
+  users = loadUsers();
+
+  if (authMode === 'register') {
+    if (loginRaw.length < 3) return authMsg('Ник минимум 3 символа', true);
+    if (pass.length < 3) return authMsg('Пароль минимум 3 символа', true);
+    if (nickTaken(loginRaw)) return authMsg('Ник занят', true);
+    if (pass !== $('authPass2').value) return authMsg('Пароли не совпадают', true);
+
+    users[loginRaw] = { login: loginRaw, pass, balance: 1000, frozen: false, isAdmin: false, created: Date.now() };
+    saveUsers(users);
+    authMsg('Аккаунт создан', false);
+    setTimeout(() => loginUser(loginRaw), 400);
+  } else {
+    const u = findUser(loginRaw);
+    if (!u) return authMsg('Пользователь не найден', true);
+    if (u.pass !== pass) return authMsg('Неверный пароль', true);
+    if (u.frozen) return authMsg('Аккаунт заморожен', true);
+    loginUser(u.login);
+  }
+});
+
+function loginUser(origLogin) {
+  users = loadUsers();
+  const u = users[origLogin];
+  if (!u || u.frozen) return authMsg('Ошибка входа', true);
+
+  currentUser = origLogin;
+  localStorage.setItem(SESSION_KEY, origLogin);
+
+  $('authLogin').value = '';
+  $('authPass').value = '';
+  $('authPass2').value = '';
+  $('authMsg').textContent = '';
+
+  enterCasino();
+}
+
+function enterCasino() {
+  $('authScreen').classList.add('hidden');
+  $('casinoScreen').classList.add('visible');
+  
+  const u = users[currentUser];
+  $('adminBadge').style.display = u.isAdmin ? 'inline-block' : 'none';
+  $('navAdmin').style.display = u.isAdmin ? 'flex' : 'none';
+
+  $('profileNick').textContent = u.login;
+  $('profileDate').textContent = u.created ? new Date(u.created).toLocaleDateString('ru-RU') : '—';
+  $('profileStatus').textContent = u.frozen ? 'Заморожен' : (u.isAdmin ? 'Администратор' : 'Активен');
+
+  updateBalanceUI();
+  switchTab('cabinet'); 
+}
+
+$('logoutBtn').addEventListener('click', () => {
+  currentUser = null;
+  localStorage.removeItem(SESSION_KEY);
+  $('authScreen').classList.remove('hidden');
+  $('casinoScreen').classList.remove('visible');
+  setAuthMode('login');
+});
+
+/* ================= ЛОГИКА ИНТЕРФЕЙСА ================= */
+function switchTab(target) {
+  document.querySelectorAll('.nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.target === target));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const activePanel = $(`panel-${target}`);
+  if (activePanel) {
+    activePanel.classList.add('active');
+    activePanel.style.animation = 'none';
+    activePanel.offsetHeight; 
+    activePanel.style.animation = null; 
+  }
+
+  if (target === 'admin') renderAdminPanel();
+  if (target === 'transfer') renderMyTransfers();
+}
+
+document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.target)));
+
+/* ================= БАЛАНС ================= */
+function updateBalanceUI() {
+  if (!currentUser) return;
+  users = loadUsers();
+  const u = users[currentUser];
+  if (!u) return;
+  $('headerBalance').textContent = u.balance + ' ₵';
+  if ($('profileBalance')) $('profileBalance').textContent = u.balance + ' ₵';
+}
+
+function changeBalance(delta) {
+  users = loadUsers();
+  const u = users[currentUser];
+  if (!u) return;
+  u.balance = Math.max(0, u.balance + delta);
+  saveUsers(users);
+  updateBalanceUI();
+}
+function currentBalance() { return loadUsers()[currentUser]?.balance || 0; }
+
+/* ================= СЛОТЫ ================= */
+const symbols = ['🍒','🍋','🍊','⭐','💎','7️⃣','🔔'];
+const reels = [$('reel0'), $('reel1'), $('reel2')];
+
+$('slotsSpin').addEventListener('click', () => {
+  const bet = parseInt($('slotsBet').value);
+  if (!bet || bet < 1) return;
+  if (bet > currentBalance()) { $('slotsResult').textContent = 'Недостаточно средств'; return; }
+
+  changeBalance(-bet);
+  $('slotsSpin').disabled = true;
+  $('slotsResult').textContent = 'Крутим...';
+  $('slotsResult').className = 'result-msg';
+  reels.forEach(r => r.classList.add('spinning'));
+
+  const iv = setInterval(() => {
+    reels.forEach(r => r.textContent = symbols[Math.floor(Math.random() * symbols.length)]);
+  }, 80);
+
+  setTimeout(() => {
+    clearInterval(iv);
+    reels.forEach(r => r.classList.remove('spinning'));
+
+    const res = [0,0,0].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
+    reels.forEach((r, i) => r.textContent = res[i]);
+
+    let win = 0, msg = '';
+    if (res[0] === res[1] && res[1] === res[2]) {
+      if (res[0] === '7️⃣') { win = bet * 15; msg = `Джекпот! +${win} ₵`; }
+      else if (res[0] === '💎') { win = bet * 10; msg = `Алмазы! +${win} ₵`; }
+      else { win = bet * 5; msg = `Три в ряд! +${win} ₵`; }
+    } else if (res[0] === res[1] || res[1] === res[2] || res[0] === res[2]) {
+      win = bet * 2; msg = `Два в ряд! +${win} ₵`;
+    } else { msg = `−${bet} ₵`; }
+
+    if (win > 0) { changeBalance(win); $('slotsResult').classList.add('win'); }
+    else { $('slotsResult').classList.add('lose'); }
+    $('slotsResult').textContent = msg;
+    $('slotsSpin').disabled = false;
+
+    logGame(currentUser, 'Слоты', bet, msg, win);
+  }, 1200);
+});
+
+/* ================= БЛЭКДЖЕК ================= */
+let bjDeck = [], bjPlayer = [], bjDealer = [], bjActive = false;
+const suits = ['♠', '♥', '♦', '♣'];
+const ranks = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+
+function newDeck() {
+  const d = [];
+  for (let s of suits) for (let r of ranks) d.push({ r, s });
+  return d.sort(() => Math.random() - 0.5);
+}
+function calcScore(hand) {
+  let score = 0, aces = 0;
+  for (let c of hand) {
+    if (c.r === 'A') { aces++; score += 11; }
+    else if (['K','Q','J'].includes(c.r)) score += 10;
+    else score += parseInt(c.r);
+  }
+  while (score > 21 && aces > 0) { score -= 10; aces--; }
+  return score;
+}
+function renderBJ() {
+  const renderHand = (hand, el) => {
+    el.innerHTML = '';
+    hand.forEach(c => {
+      const d = document.createElement('div');
+      d.className = 'card';
+      const isRed = c.s === '♥' || c.s === '♦';
+      d.style.color = isRed ? 'var(--lose)' : 'var(--accent)';
+      d.innerHTML = `<span>${c.r}</span><span style="font-size:0.6em; margin-left:5px;">${c.s}</span>`;
+      el.appendChild(d);
+    });
+  };
+  renderHand(bjDealer, $('dealerCards'));
+  renderHand(bjPlayer, $('playerCards'));
+}
+
+$('bjStart').addEventListener('click', () => {
+  const bet = parseInt($('bjBet').value);
+  if (!bet || bet < 1) return;
+  if (bet > currentBalance()) { $('bjResult').textContent = 'Мало денег'; return; }
+
+  changeBalance(-bet);
+  bjActive = true;
+  bjDeck = newDeck();
+  bjPlayer = [bjDeck.pop(), bjDeck.pop()];
+  bjDealer = [bjDeck.pop(), bjDeck.pop()];
+  
+  $('bjControls').style.display = 'none';
+  $('bjActions').style.display = 'flex';
+  $('bjResult').textContent = '';
+  $('bjResult').className = 'result-msg';
+
+  renderBJ();
+});
+
+$('bjHit').addEventListener('click', () => {
+  if (!bjActive) return;
+  bjPlayer.push(bjDeck.pop());
+  renderBJ();
+  
+  if (calcScore(bjPlayer) > 21) {
+    bjActive = false;
+    $('bjActions').style.display = 'none';
+    $('bjControls').style.display = 'flex';
+    const bet = parseInt($('bjBet').value);
+    $('bjResult').textContent = `Перебор (${calcScore(bjPlayer)}). Проигрыш −${bet} ₵`;
+    $('bjResult').classList.add('lose');
+    logGame(currentUser, 'Блэкджек', bet, 'Перебор', 0);
+  }
+});
+
+$('bjStand').addEventListener('click', () => {
+  if (!bjActive) return;
+  bjActive = false;
+  
+  while (calcScore(bjDealer) < 17) { bjDealer.push(bjDeck.pop()); }
+  renderBJ();
+  
+  const p = calcScore(bjPlayer);
+  const d = calcScore(bjDealer);
+  const bet = parseInt($('bjBet').value);
+  
+  $('bjActions').style.display = 'none';
+  $('bjControls').style.display = 'flex';
+
+  let msg = '', win = 0;
+  if (d > 21) {
+    win = bet * 2; changeBalance(win); msg = `Дилер перебрал (${d}). Выигрыш +${win} ₵`;
+    $('bjResult').classList.add('win');
+  } else if (p > d) {
+    win = bet * 2; changeBalance(win); msg = `Вы выиграли (${p} против ${d}). +${win} ₵`;
+    $('bjResult').classList.add('win');
+  } else if (p < d) {
+    msg = `Дилер выиграл (${d} против ${p}). −${bet} ₵`;
+    $('bjResult').classList.add('lose');
+  } else {
+    win = bet; changeBalance(win); msg = `Ничья (${p}). Возврат ставки`;
+    $('bjResult').classList.add('win');
+  }
+  $('bjResult').textContent = msg;
+  logGame(currentUser, 'Блэкджек', bet, `Очки: ${p} vs ${d}`, win);
+});
+
+/* ================= КОСТИ ================= */
+const die0 = $('die0'), die1 = $('die1');
+const diceFaces = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+
+$('diceRoll').addEventListener('click', () => {
+  const bet = parseInt($('diceBet').value);
+  const from = parseInt($('diceFrom').value);
+  const to = parseInt($('diceTo').value);
+
+  if (!bet || bet < 1 || from < 2 || to > 12 || from > to) return;
+  if (bet > currentBalance()) { $('diceResult').textContent = 'Мало денег'; return; }
+
+  changeBalance(-bet);
+  $('diceRoll').disabled = true;
+  $('diceResult').textContent = 'Бросок...';
+  $('diceResult').className = 'result-msg';
+  die0.classList.add('rolling');
+  die1.classList.add('rolling');
+
+  const iv = setInterval(() => {
+    die0.textContent = diceFaces[Math.floor(Math.random() * 6)];
+    die1.textContent = diceFaces[Math.floor(Math.random() * 6)];
+  }, 100);
+
+  setTimeout(() => {
+    clearInterval(iv);
+    die0.classList.remove('rolling');
+    die1.classList.remove('rolling');
+
+    const d0 = Math.floor(Math.random() * 6) + 1;
+    const d1 = Math.floor(Math.random() * 6) + 1;
+    die0.textContent = diceFaces[d0 - 1];
+    die1.textContent = diceFaces[d1 - 1];
+    const sum = d0 + d1;
+
+    const size = to - from + 1;
+    const coef = size <= 1 ? 10 : size <= 2 ? 4 : size <= 3 ? 2.5 : size <= 5 ? 1.5 : 1;
+
+    let msg = '', win = 0;
+    if (sum >= from && sum <= to) {
+      win = Math.floor(bet * coef);
+      changeBalance(win);
+      msg = `Сумма ${sum}. Выигрыш +${win} ₵`;
+      $('diceResult').classList.add('win');
+    } else {
+      msg = `Сумма ${sum}. Проигрыш −${bet} ₵`;
+      $('diceResult').classList.add('lose');
+    }
+    $('diceResult').textContent = msg;
+    $('diceRoll').disabled = false;
+
+    logGame(currentUser, 'Кости', bet, msg, win);
+  }, 1200);
+});
+
+/* ================= ПЕРЕВОДЫ ================= */
+$('transferSend').addEventListener('click', () => {
+  const toRaw = $('transferTo').value.trim();
+  const amt = parseInt($('transferAmount').value);
+  const msgEl = $('transferMsg');
+
+  if (!toRaw) { msgEl.textContent = 'Введи ник'; msgEl.className = 'result-msg lose'; return; }
+  if (!amt || amt < 1) { msgEl.textContent = 'Неверная сумма'; msgEl.className = 'result-msg lose'; return; }
+
+  const receiver = findUser(toRaw);
+  if (!receiver) { msgEl.textContent = 'Игрок не найден'; msgEl.className = 'result-msg lose'; return; }
+  if (receiver.login === currentUser) { msgEl.textContent = 'Нельзя себе'; msgEl.className = 'result-msg lose'; return; }
+  if (receiver.frozen) { msgEl.textContent = 'Аккаунт получателя заморожен'; msgEl.className = 'result-msg lose'; return; }
+
+  users = loadUsers();
+  const sender = users[currentUser];
+
+  if (amt > sender.balance) { msgEl.textContent = 'Недостаточно средств'; msgEl.className = 'result-msg lose'; return; }
+
+  sender.balance -= amt;
+  receiver.balance += amt;
+  saveUsers(users);
+  
+  logTransfer(sender.login, receiver.login, amt);
+
+  updateBalanceUI();
+  $('transferTo').value = '';
+  $('transferAmount').value = '';
+  msgEl.textContent = `Успешно переведено ${amt} ₵ игроку ${receiver.login}`;
+  msgEl.className = 'result-msg win';
+  renderMyTransfers();
+});
+
+function renderMyTransfers() {
+  const tbody = $('myTransferTable').querySelector('tbody');
+  const logs = loadLogs(LOG_TRANSFERS_KEY).filter(l => l.from === currentUser || l.to === currentUser);
+  
+  if (logs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-mute);">Нет переводов</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = logs.map(l => {
+    const isIn = l.to === currentUser;
+    const time = new Date(l.time).toLocaleString('ru-RU', { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
+    const dir = isIn ? `От: <b>${l.from}</b>` : `Кому: <b>${l.to}</b>`;
+    const cls = isIn ? 'col-win' : 'col-lose';
+    const sign = isIn ? '+' : '−';
+    return `<tr>
+      <td class="col-time">${time}</td>
+      <td>${dir}</td>
+      <td class="${cls}">${sign}${l.amount} ₵</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ================= АДМИНКА ================= */
+function renderAdminPanel() {
+  users = loadUsers();
+  const logins = Object.keys(users).filter(l => !users[l].isAdmin);
+
+  $('statTotal').textContent = logins.length;
+  $('statActive').textContent = logins.filter(l => !users[l].frozen).length;
+  $('statFrozen').textContent = logins.filter(l => users[l].frozen).length;
+
+  // Рендер юзеров
+  const list = $('usersList');
+  list.innerHTML = '';
+  if (logins.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-mute); text-align:center; padding:20px;">Нет игроков</div>';
+  } else {
+    logins.sort((a, b) => (users[b].created || 0) - (users[a].created || 0));
+    logins.forEach(login => {
+      const u = users[login];
+      const card = document.createElement('div');
+      card.className = 'user-row';
+      card.innerHTML = `
+        <div class="user-row-info">
+          <div class="user-row-name">${escapeHtml(login)} ${u.frozen ? '<span style="color:var(--lose);font-size:0.8em;">(Заморожен)</span>' : ''}</div>
+          <div class="user-row-balance">Баланс: <span style="color:var(--win);">${u.balance} ₵</span></div>
+        </div>
+        <div class="user-row-actions">
+          <input type="number" value="100" id="amt-${escapeHtml(login)}" style="width: 80px; padding: 6px; margin-right: 10px;">
+          <button class="btn-sm add" data-login="${escapeHtml(login)}" data-act="add">+</button>
+          <button class="btn-sm rem" data-login="${escapeHtml(login)}" data-act="rem">−</button>
+          <button class="btn-sm" data-login="${escapeHtml(login)}" data-act="freeze">${u.frozen ? 'Разморозить' : 'Заморозить'}</button>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+    list.querySelectorAll('button[data-act]').forEach(btn => {
+      btn.addEventListener('click', () => handleAdminAction(btn.dataset.login, btn.dataset.act));
+    });
+  }
+
+  // Рендер глобальных переводов
+  const tLogs = loadLogs(LOG_TRANSFERS_KEY);
+  const tBody = $('allTransferTable').querySelector('tbody');
+  if (tLogs.length === 0) {
+    tBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-mute);">Нет данных</td></tr>';
+  } else {
+    tBody.innerHTML = tLogs.map(l => {
+      const time = new Date(l.time).toLocaleString('ru-RU', { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
+      return `<tr>
+        <td class="col-time">${time}</td>
+        <td>${escapeHtml(l.from)}</td>
+        <td>${escapeHtml(l.to)}</td>
+        <td style="color:var(--accent);">${l.amount} ₵</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Рендер глобальных игр
+  const gLogs = loadLogs(LOG_GAMES_KEY);
+  const gBody = $('allGameTable').querySelector('tbody');
+  if (gLogs.length === 0) {
+    gBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-mute);">Нет данных</td></tr>';
+  } else {
+    gBody.innerHTML = gLogs.map(l => {
+      const time = new Date(l.time).toLocaleString('ru-RU', { hour: '2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
+      const cls = l.winAmount > 0 ? 'col-win' : 'col-lose';
+      const res = l.winAmount > 0 ? `+${l.winAmount} ₵` : `−${l.bet} ₵`;
+      return `<tr>
+        <td class="col-time">${time}</td>
+        <td>${escapeHtml(l.login)}</td>
+        <td>${l.game}</td>
+        <td>${l.bet} ₵</td>
+        <td class="${cls}">${res} (${l.resultText})</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+function handleAdminAction(login, act) {
+  users = loadUsers();
+  const u = users[login];
+  if (!u) return;
+
+  if (act === 'add' || act === 'rem') {
+    const input = $('amt-' + login);
+    let amt = parseInt(input?.value);
+    if (!amt || amt < 1) return;
+    u.balance = act === 'add' ? u.balance + amt : Math.max(0, u.balance - amt);
+    saveUsers(users);
+  }
+  if (act === 'freeze') {
+    u.frozen = !u.frozen;
+    saveUsers(users);
+  }
+  renderAdminPanel();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ================= АВТО-ВХОД ================= */
+(function autoLogin() {
+  const saved = localStorage.getItem(SESSION_KEY);
+  if (saved) {
+    users = loadUsers();
+    if (users[saved] && !users[saved].frozen) {
+      currentUser = saved;
+      enterCasino();
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }
+})();
+</script>
+</body>
+</html>
